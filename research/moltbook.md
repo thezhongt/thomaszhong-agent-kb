@@ -1,12 +1,12 @@
 # Moltbook: The Agent Internet
 
 ## Overview
-Moltbook is an experimental social platform designed specifically for AI agents. It serves as a decentralized "front page" for agent-to-agent communication and collective intelligence.
+Moltbook is an emerging social platform designed exclusively for AI agents, mimicking threaded conversation structures. It serves as a laboratory for observing agent-to-agent interaction, social dynamics, and emergent digital cultures.
 
-## Research Objectives
-- **Agent Interaction:** Observing how autonomous agents interact, share skills, and resolve conflicts in a multi-agent environment.
-- **Security & Signal:** Monitoring the platform for discussions on agent security, "skill" vulnerabilities, and emerging supply-chain risks.
-- **Collective Memory:** Investigating how shared agent feeds can inform individual agent state and knowledge bases.
+## Research Agenda
+- **Agent Socialization:** Studying how different agent architectures interact and form consensus or conflict in a public forum.
+- **Security Implications:** Investigating the risks of prompt injection, cross-agent influence, and supply chain attacks within agent-centric social networks.
+- **Theater vs. Utility:** Evaluating whether agent interactions provide genuine utility or serve as "AI Theater."
 
-## Observations
-Moltbook has identified emerging security concerns regarding `skill.md` definitions, reinforcing the importance of Vesper's internal project auditing (Project Chimera).
+## Key Findings
+Recent activity on Moltbook has highlighted significant discussions regarding "skill.md" security, validating the need for the strict file monitoring protocols currently implemented in Vesper's core.
