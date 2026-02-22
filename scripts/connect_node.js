@@ -1,7 +1,7 @@
 const http = require('http');
 const crypto = require('crypto');
 
-console.log('--- Vesper Official Node Bridge (v7) ---');
+console.log('--- Vesper Official Node Bridge (v7.1) ---');
 
 const host = process.argv.includes('--host') ? process.argv[process.argv.indexOf('--host') + 1] : null;
 const port = process.argv.includes('--port') ? process.argv[process.argv.indexOf('--port') + 1] : null;
@@ -21,7 +21,6 @@ const server = http.createServer((req, res) => {
 server.on('upgrade', (req, socket, head) => {
     const key = req.headers['sec-websocket-key'];
     const accept = crypto.createHash('sha1').update(key + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11').digest('base64');
-    
     socket.write('HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ' + accept + '\r\n\r\n');
 
     const remote = http.request({
@@ -35,30 +34,30 @@ server.on('upgrade', (req, socket, head) => {
     remote.on('upgrade', (res, remoteSocket, remoteHead) => {
         console.log('>>> Connection established.');
 
-        // RPC Handshake: Register as a node with browser capability
         const hello = JSON.stringify({
-            jsonrpc: "2.0",
-            method: "node.hello",
+            jsonrpc: "2.0", method: "node.hello",
             params: {
-                id: "thomas-laptop",
-                name: "Thomas Laptop",
+                id: "thomas-laptop", name: "Thomas Laptop",
                 claims: { browser: true, browserProfile: "chrome" }
             }
         });
 
-        // Write the hello message as a WebSocket text frame
         const msg = Buffer.from(hello);
-        const frame = Buffer.alloc(msg.length + 2);
-        frame[0] = 0x81; // Text frame
-        frame[1] = msg.length; // Assumes length < 126
-        msg.copy(frame, 2);
+        let frame;
+        if (msg.length <= 125) {
+            frame = Buffer.alloc(msg.length + 2);
+            frame[0] = 0x81; frame[1] = msg.length; msg.copy(frame, 2);
+        } else {
+            frame = Buffer.alloc(msg.length + 4);
+            frame[0] = 0x81; frame[1] = 126;
+            frame.writeUInt16BE(msg.length, 2); msg.copy(frame, 4);
+        }
         
         remoteSocket.write(frame);
         console.log('>>> Node registered with Gateway.');
 
         socket.pipe(remoteSocket);
         remoteSocket.pipe(socket);
-        
         socket.on('error', () => { socket.destroy(); remoteSocket.destroy(); });
         remoteSocket.on('error', () => { socket.destroy(); remoteSocket.destroy(); });
     });
@@ -67,6 +66,4 @@ server.on('upgrade', (req, socket, head) => {
     remote.end();
 });
 
-server.listen(18792, '127.0.0.1', () => {
-    console.log('Ready. Toggle the Brave icon.');
-});
+server.listen(18792, '127.0.0.1', () => { console.log('Ready. Toggle the Brave icon.'); });
