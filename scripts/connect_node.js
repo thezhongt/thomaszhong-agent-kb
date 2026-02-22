@@ -1,7 +1,7 @@
 const http = require('http');
 const crypto = require('crypto');
 
-console.log('--- Vesper Official Relay (v14 - Challenge Aware) ---');
+console.log('--- Vesper Official Relay (v14 - Keepalive) ---');
 
 const host = process.argv.includes('--host') ? process.argv[process.argv.indexOf('--host') + 1] : null;
 const port = process.argv.includes('--port') ? process.argv[process.argv.indexOf('--port') + 1] : null;
@@ -23,30 +23,40 @@ server.on('upgrade', (req, socket, head) => {
     const key = req.headers['sec-websocket-key'];
     const accept = crypto.createHash('sha1').update(key + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11').digest('base64');
     
+    // Immediate response to browser to prevent timeout
+    socket.write(
+        'HTTP/1.1 101 Switching Protocols\r\n' +
+        'Upgrade: websocket\r\n' +
+        'Connection: Upgrade\r\n' +
+        'Sec-WebSocket-Accept: ' + accept + '\r\n\r\n'
+    );
+
     const remote = http.request({
-        host: host.trim(), port: parseInt(port), path: '/rpc/extension', method: 'GET',
+        host: host.trim(),
+        port: parseInt(port),
+        path: '/rpc', // Using generic /rpc but with specific headers
+        method: 'GET',
         headers: {
-            'Upgrade': 'websocket', 'Connection': 'Upgrade', 'Sec-WebSocket-Key': key, 'Sec-WebSocket-Version': '13',
-            'Authorization': `Bearer ${token.trim()}`, 'X-OpenClaw-Relay-Target': 'extension'
+            'Upgrade': 'websocket',
+            'Connection': 'Upgrade',
+            'Sec-WebSocket-Key': key,
+            'Sec-WebSocket-Version': '13',
+            'Authorization': `Bearer ${token.trim()}`,
+            'X-OpenClaw-Relay-Target': 'extension'
         }
     });
 
     remote.on('upgrade', (res, remoteSocket, remoteHead) => {
         console.log('>>> TUNNEL ACTIVE.');
         
-        socket.write(
-            'HTTP/1.1 101 Switching Protocols\r\n' +
-            'Upgrade: websocket\r\n' +
-            'Connection: Upgrade\r\n' +
-            'Sec-WebSocket-Accept: ' + accept + '\r\n\r\n'
-        );
+        // Protocol Handshake Frame
+        socket.write(Buffer.from([0x81, 0x02, 0x7b, 0x7d])); 
 
-        // Pipe everything
         remoteSocket.pipe(socket);
         socket.pipe(remoteSocket);
         
         const cleanup = (side) => {
-            console.log(`Connection closed by ${side}.`);
+            console.log(`Link closed by ${side}.`);
             socket.destroy();
             remoteSocket.destroy();
         };
@@ -55,10 +65,19 @@ server.on('upgrade', (req, socket, head) => {
         remoteSocket.on('error', (e) => cleanup('Remote Error: ' + e.message));
         socket.on('end', () => cleanup('Brave End'));
         remoteSocket.on('end', () => cleanup('Remote End'));
+        
+        // Keepalive ping to Vesper every 15s
+        const pingInterval = setInterval(() => {
+            if (remoteSocket.writable) {
+                remoteSocket.write(Buffer.from([0x89, 0x00])); // WebSocket Ping
+            } else {
+                clearInterval(pingInterval);
+            }
+        }, 15000);
     });
 
     remote.on('error', (e) => {
-        console.error('REMOTE ERROR:', e.message);
+        console.error('REMOTE CONNECTION FAILED:', e.message);
         socket.destroy();
     });
 
@@ -66,5 +85,5 @@ server.on('upgrade', (req, socket, head) => {
 });
 
 server.listen(18792, '127.0.0.1', () => {
-    console.log('v14 Bridge listening on 18792...');
+    console.log('v14 Bridge listening on 18792. Click Brave icon.');
 });
