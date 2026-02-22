@@ -1,7 +1,7 @@
 const http = require('http');
 const crypto = require('crypto');
 
-console.log('--- Vesper Official Node Bridge (v7.1) ---');
+console.log('--- Vesper Official Node Bridge (v7.2) ---');
 
 const host = process.argv.includes('--host') ? process.argv[process.argv.indexOf('--host') + 1] : null;
 const port = process.argv.includes('--port') ? process.argv[process.argv.indexOf('--port') + 1] : null;
@@ -24,15 +24,16 @@ server.on('upgrade', (req, socket, head) => {
     socket.write('HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ' + accept + '\r\n\r\n');
 
     const remote = http.request({
-        host: host.trim(), port: parseInt(port), path: '/rpc', method: 'GET',
+        host: host.trim(), port: parseInt(port), path: '/rpc/extension', method: 'GET',
         headers: {
             'Upgrade': 'websocket', 'Connection': 'Upgrade', 'Sec-WebSocket-Key': key, 'Sec-WebSocket-Version': '13',
-            'Authorization': `Bearer ${token.trim()}`
+            'Authorization': `Bearer ${token.trim()}`,
+            'X-OpenClaw-Relay-Target': 'extension'
         }
     });
 
     remote.on('upgrade', (res, remoteSocket, remoteHead) => {
-        console.log('>>> Connection established.');
+        console.log('>>> Connection established with Gateway.');
 
         const hello = JSON.stringify({
             jsonrpc: "2.0", method: "node.hello",
@@ -54,7 +55,7 @@ server.on('upgrade', (req, socket, head) => {
         }
         
         remoteSocket.write(frame);
-        console.log('>>> Node registered with Gateway.');
+        console.log('>>> Node registered.');
 
         socket.pipe(remoteSocket);
         remoteSocket.pipe(socket);
